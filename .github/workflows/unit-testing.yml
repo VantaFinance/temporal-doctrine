@@ -1,0 +1,28 @@
+name: Unit-Testing CI
+on: [ push, pull_request ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.operating-system }}
+    name: PHP ${{ matrix.php }}
+    strategy:
+      matrix:
+        operating-system: [ ubuntu-latest ]
+        php: [8.2, 8.3 , 8.4]
+
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Setup PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: flex
+          extensions: opcache,zip,intl
+
+      - uses: ramsey/composer-install@v2
+        with:
+          composer-options: --optimize-autoloader
+
+      - name: Run test suite on PHP ${{ matrix.php }}
+        run: ./vendor/bin/phpunit
