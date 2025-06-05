@@ -15,12 +15,14 @@ use Doctrine\DBAL\Exception as DBALException;
 use Doctrine\ORM\EntityManagerInterface as EntityManager;
 use Doctrine\Persistence\ManagerRegistry;
 use InvalidArgumentException;
+use Psr\Log\LoggerInterface as Logger;
 
-final readonly class DoctrinePingConnectionFinalizer
+final readonly class DoctrinePingConnectionFinalizer implements Finalizer
 {
     public function __construct(
         private ManagerRegistry $managerRegistry,
         private string $entityManagerName,
+        private ?Logger $logger = null,
     ) {
     }
 
@@ -32,11 +34,21 @@ final readonly class DoctrinePingConnectionFinalizer
     {
         try {
             $entityManager = $this->managerRegistry->getManager($this->entityManagerName);
-        } catch (InvalidArgumentException) {
+        } catch (InvalidArgumentException $e) {
+            $this->logger?->error(sprintf('Failed to initialize Doctrine Ping connection, reason: %s', $e->getMessage()), [
+                'e' => $e,
+            ]);
+
+
             return;
         }
 
         if (!$entityManager instanceof EntityManager) {
+            $this->logger?->error(
+                sprintf('Failed to initialize Doctrine Ping connection, reason: %s', 'Entity Manager must be an instance of Doctrine\ORM\EntityManagerInterface')
+            );
+
+
             return;
         }
 

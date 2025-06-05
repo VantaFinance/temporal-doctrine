@@ -6,6 +6,10 @@ namespace Vanta\Integration\Temporal\Doctrine\Test;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception;
+
+use function PHPUnit\Framework\assertArrayHasKey;
+use function PHPUnit\Framework\assertEquals;
+
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
@@ -27,7 +31,6 @@ use Temporal\Activity;
 use Temporal\Activity\ActivityInfo;
 use Temporal\DataConverter\DataConverter;
 use Temporal\DataConverter\EncodedValues;
-use Temporal\DataConverter\ValuesInterface;
 use Temporal\Interceptor\ActivityInbound\ActivityInput;
 use Temporal\Interceptor\Header;
 use Temporal\Internal\Activity\ActivityContext;
@@ -36,8 +39,7 @@ use Temporal\Internal\Marshaller\Marshaller;
 use Temporal\Worker\Transport\Goridge;
 use Throwable;
 use Vanta\Integration\Temporal\Doctrine\Interceptor\SentryDoctrineOpenTransactionInterceptor;
-use function PHPUnit\Framework\assertArrayHasKey;
-use function PHPUnit\Framework\assertEquals;
+use Vanta\Integration\Temporal\Doctrine\Test\Stub\DummyActivityContext;
 
 #[CoversClass(SentryDoctrineOpenTransactionInterceptor::class)]
 final class SentryDoctrineOpenTransactionInterceptorTest extends TestCase
@@ -175,9 +177,8 @@ final class SentryDoctrineOpenTransactionInterceptorTest extends TestCase
         ], $activityInfo);
 
 
-
         Activity::setCurrentContext(
-            new class(
+            new DummyActivityContext(
                 new ActivityContext(
                     Goridge::create(),
                     DataConverter::createDefault(),
@@ -185,49 +186,7 @@ final class SentryDoctrineOpenTransactionInterceptorTest extends TestCase
                     Header::empty()
                 ),
                 $activityInfo
-            ) implements Activity\ActivityContextInterface {
-                public function __construct(
-                    private readonly ActivityContext $context,
-                    private readonly ActivityInfo $info,
-                ) {
-                }
-
-
-                public function getInfo(): ActivityInfo
-                {
-                    return $this->info;
-                }
-
-                public function getInput(): ValuesInterface
-                {
-                    return $this->context->getInput();
-                }
-
-                public function hasHeartbeatDetails(): bool
-                {
-                    return $this->context->hasHeartbeatDetails();
-                }
-
-                public function getHeartbeatDetails($type = null)
-                {
-                    return $this->context->getHeartbeatDetails($type);
-                }
-
-                public function doNotCompleteOnReturn(): void
-                {
-                    $this->context->doNotCompleteOnReturn();
-                }
-
-                public function heartbeat($details): void
-                {
-                    $this->context->heartbeat($details);
-                }
-
-                public function getInstance(): object
-                {
-                    return $this;
-                }
-            },
+            ),
         );
 
         $interceptor = new SentryDoctrineOpenTransactionInterceptor($hub, $connection);

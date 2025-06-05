@@ -13,7 +13,7 @@ namespace Vanta\Integration\Temporal\Doctrine\Finalizer;
 
 use Doctrine\Persistence\ManagerRegistry;
 
-final readonly class DoctrineClearEntityManagerFinalizer
+final readonly class DoctrineClearEntityManagerFinalizer implements Finalizer
 {
     public function __construct(
         private ManagerRegistry $managerRegistry

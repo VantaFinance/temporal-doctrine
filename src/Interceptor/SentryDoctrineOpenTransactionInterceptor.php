@@ -4,13 +4,19 @@ declare(strict_types=1);
 
 namespace Vanta\Integration\Temporal\Doctrine\Interceptor;
 
+use Composer\InstalledVersions;
 use Doctrine\DBAL\Connection;
+use LogicException;
 use Sentry\Event;
 use Sentry\Severity;
 use Sentry\State\HubInterface as Hub;
 use Temporal\Activity;
 use Temporal\Interceptor\ActivityInbound\ActivityInput;
 use Temporal\Interceptor\ActivityInboundInterceptor;
+
+if (!InstalledVersions::isInstalled('sentry/sentry')) {
+    throw new LogicException('You cannot use "Sentry\State\HubInterface" as the "sentry/sentry" package is not installed. Try running "composer require sentry/sentry".');
+}
 
 final readonly class SentryDoctrineOpenTransactionInterceptor implements ActivityInboundInterceptor
 {

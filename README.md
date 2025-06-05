@@ -21,7 +21,7 @@ composer require vanta/temporal-doctrine
 ## Usage
 
 
-### Report open transaction to sentry
+#### Report open transaction to sentry
 
 ```php
 <?php
@@ -50,9 +50,7 @@ $worker = $factory->newWorker(
 ```
 
 
-### Report open transaction to monolog
-
-
+#### Report open transaction to monolog
 
 ```php
 <?php
@@ -66,7 +64,7 @@ use Monolog\Level;
 use Monolog\Logger;
 use Temporal\Interceptor\SimplePipelineProvider;
 use Temporal\WorkerFactory;
-use Vanta\Integration\Temporal\Doctrine\Interceptor\MonologDoctrineOpenTransactionInterceptor;
+use Vanta\Integration\Temporal\Doctrine\Interceptor\PsrLoggingDoctrineOpenTransactionInterceptor;
 
 require_once __DIR__ . '/vendor/autoload.php';
 
@@ -87,15 +85,14 @@ $factory = WorkerFactory::create();
 
 $worker = $factory->newWorker(
     interceptorProvider: new SimplePipelineProvider([
-        new MonologDoctrineOpenTransactionInterceptor($logger, $connection),
+        new PsrLoggingDoctrineOpenTransactionInterceptor($logger, $connection),
     ])
 );
 ```
 
 
 
-### Clear UnitOfWork and reconnect db connection if connection lost
-
+#### Clear UnitOfWork and reconnect db connection if connection lost
 
 ```php
 <?php
@@ -105,12 +102,12 @@ declare(strict_types=1);
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\ORMSetup;
-use Doctrine\Persistence\AbstractManagerRegistry;
+use Doctrine\Persistence\AbstractManagerRegistry as ManagerRegistry;
 use Temporal\Interceptor\SimplePipelineProvider;
 use Temporal\WorkerFactory;
 use Vanta\Integration\Temporal\Doctrine\Finalizer\DoctrineClearEntityManagerFinalizer;
 use Vanta\Integration\Temporal\Doctrine\Finalizer\DoctrinePingConnectionFinalizer;
-use Vanta\Integration\Temporal\Doctrine\Interceptor\DoctrineActivityInboundInterceptor;
+use Vanta\Integration\Temporal\Doctrine\Interceptor\DoctrineHandlerThrowsActivityInboundInterceptor;
 
 require_once __DIR__ . '/vendor/autoload.php';
 
@@ -128,15 +125,41 @@ $entityManager = new EntityManager($connection, $config);
 
 $managerRegistry = new class(
     'test',
-    ['default' => $connection],
-    ['default' => $entityManager],
-    'default',
-    'default',
-    'test'
-) extends AbstractManagerRegistry {
+    ['default-connection' => 'default-connection'],
+    ['default-manager' => 'default-manager'],
+    'default-connection',
+    'default-manager',
+    \stdClass::class,
+    ['default-connection' => $connection, 'default-manager' => $entityManager],
+) extends ManagerRegistry {
+    /**
+     * @param array<string, string> $connections
+     * @param array<string, string> $managers
+     * @phpstan-param class-string $proxyInterfaceName
+     * @param array<non-empty-string, object> $services
+     */
+    public function __construct(
+        string $name,
+        array $connections,
+        array $managers,
+        string $defaultConnection,
+        string $defaultManager,
+        string $proxyInterfaceName,
+        private readonly array $services
+    ) {
+        parent::__construct(
+            $name,
+            $connections,
+            $managers,
+            $defaultConnection,
+            $defaultManager,
+            $proxyInterfaceName
+        );
+    }
+
     protected function getService(string $name): object
     {
-        // TODO: Implement resetService() method.
+        return $this->services[$name] ?? throw new RuntimeException(sprintf('Service "%s" not found', $name));
     }
 
     protected function resetService(string $name): void
@@ -145,7 +168,7 @@ $managerRegistry = new class(
     }
 };
 
-$doctrinePingConnectionFinalizer     = new DoctrinePingConnectionFinalizer($managerRegistry, 'test');
+$doctrinePingConnectionFinalizer     = new DoctrinePingConnectionFinalizer($managerRegistry, 'default-manager');
 $doctrineClearEntityManagerFinalizer = new DoctrineClearEntityManagerFinalizer($managerRegistry);
 
 $finalizers = [
@@ -157,7 +180,7 @@ $factory = WorkerFactory::create();
 
 $worker = $factory->newWorker(
     interceptorProvider: new SimplePipelineProvider([
-        new DoctrineActivityInboundInterceptor($doctrinePingConnectionFinalizer),
+        new DoctrineHandlerThrowsActivityInboundInterceptor($doctrinePingConnectionFinalizer),
     ])
 );
 

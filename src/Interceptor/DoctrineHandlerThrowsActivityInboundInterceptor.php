@@ -16,12 +16,12 @@ use Doctrine\ORM\Exception\EntityManagerClosed;
 use Temporal\Interceptor\ActivityInbound\ActivityInput;
 use Temporal\Interceptor\ActivityInboundInterceptor;
 use Throwable;
-use Vanta\Integration\Temporal\Doctrine\Finalizer\DoctrinePingConnectionFinalizer;
+use Vanta\Integration\Temporal\Doctrine\Finalizer\Finalizer;
 
-final readonly class DoctrineActivityInboundInterceptor implements ActivityInboundInterceptor
+final readonly class DoctrineHandlerThrowsActivityInboundInterceptor implements ActivityInboundInterceptor
 {
     public function __construct(
-        private DoctrinePingConnectionFinalizer $finalizer
+        private Finalizer $finalizer
     ) {
     }
 

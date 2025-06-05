@@ -11,13 +11,20 @@ declare(strict_types=1);
 
 namespace Vanta\Integration\Temporal\Doctrine\Interceptor;
 
+use Composer\InstalledVersions;
 use Doctrine\DBAL\Connection;
+use LogicException;
 use Psr\Log\LoggerInterface as Logger;
 use Temporal\Activity;
 use Temporal\Interceptor\ActivityInbound\ActivityInput;
 use Temporal\Interceptor\ActivityInboundInterceptor;
 
-final readonly class MonologDoctrineOpenTransactionInterceptor implements ActivityInboundInterceptor
+if (!InstalledVersions::isInstalled('psr/log')) {
+    throw new LogicException('You cannot use "Psr\Log\LoggerInterface" as the "psr/log" package is not installed. Try running "composer require psr/log".');
+}
+
+
+final readonly class PsrLoggingDoctrineOpenTransactionInterceptor implements ActivityInboundInterceptor
 {
     public function __construct(
         private Logger $logger,
